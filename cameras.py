@@ -61,7 +61,7 @@ def line_points_move(line_points, axis, value):
     return line_points
 
 def convert(line_points, camera_transform):
-    # PIL coordinate system to Carla coordinate system\
+    # PIL coordinate system to Carla coordinate system
     result_points = []
     for point in line_points:
         x_0 = point.x
@@ -136,19 +136,20 @@ def convert_to_ego_car(line_points, ego_vehicle):
 
     return points_of_ego_vehicle_coordinate_system
 
-def save_points(points, filename):
+def save_points(points, filename, axis_num):
     with open(filename, 'w') as file:
         for point in points:
-            file.write(f"{point.x}, {point.y}, {point.z}\n")
+            if axis_num == 3:
+                file.write(f"{point[0]}, {point[1]}, {point[2]}\n")
+            if axis_num == 2:
+                file.write(f"{point[0]}, {point[1]}\n")
 
 def save_yaws(yaws, points, filename):
     with open(filename, 'w') as file:
         for i in range(len(yaws)): 
-            print(points[i])
-            print(yaws[i])
-            file.write(f"{points[i].x}, {point[i].y}, {point[i].z}, {yaws[i]}\n")
+            file.write(f"{points[i].x}, {points[i].y}, {points[i].z}, {yaws[i]}\n")
         length = len(points) - 1
-        file.write(f"{points[length].x}, {point[length].y}, {point[length].z}\n")
+        file.write(f"{points[length].x}, {points[length].y}, {points[length].z}\n")
 
 def execute_function(world):
     line_points = None
@@ -168,6 +169,14 @@ def calculate_yaws(points):
         dx = points[i + 1] .x - points[i].x
         dy = points[i + 1] .y - points[i].y
         yaw = math.atan2(dy, dx)
+        yaw = math.radians(yaw)
+        if 90 < yaw <270:
+            yaw = - (yaw - 90)
+        else:
+            if yaw <= 90:
+                yaw = 90 - yaw
+            else:
+                yaw = - (yaw - 450)
         yaws.append(yaw)
     return yaws 
 
@@ -280,9 +289,9 @@ if __name__ == "__main__":
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_c:
                     carla_points = convert(line_points, camera_transform)
-                    save_points(carla_points,"point_in_carla.txt")
+                    save_points(carla_points, "point_in_carla.txt", 3)
                     ego_car_points = convert_to_ego_car(carla_points, ego_vehicle)
-                    save_points(ego_car_points,"point_in_ego_car_system.txt")
+                    save_points(ego_car_points, "point_in_ego_car_system.txt", 2)
                     print("data saved")
                 elif event.key == pygame.K_h:
                     view_height = 0
@@ -330,9 +339,9 @@ if __name__ == "__main__":
                             break
                     if flag == True:
                         point_xyz = carla.Location(new_pos[0], new_pos[1], 0.5)
-                    print("^^^^^")
-                    for point in point_lists:
-                        print(point.location.z,point.label)
+                    # print("^^^^^")
+                    # for point in point_lists:
+                    #     print(point.location.z,point.label)
                 else:
                     point_xyz = carla.Location(new_pos[0], new_pos[1], 0.5)
                 
