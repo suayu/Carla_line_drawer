@@ -49,6 +49,7 @@ In the new window, you can draw lines with the mouse.  The tool will draw red li
 - Press `C` to save the list of reference points, both in the simulator's coordinates and relative to the ego vehicle's position.
 - Press `H` to reset the camera height to the default value.
 - Press `Y` to calculate yaw of ego car at the reference point
+- Press `B` to smooth the curve
 
 ## Note
 
