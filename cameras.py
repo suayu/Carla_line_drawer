@@ -7,58 +7,66 @@ import numpy as np
 import scipy.interpolate as scipy_interpolate
 from draw_line_thread import DrawInCarlaThread
 
-#pygame窗口大小
 PIC_SIZE = 800
 
-# pygame-carla初始图像缩放参数
-CAMERA_SCALING_PARAM = 25/141
-
-# 初始相机高度
-CAMERA_INIT_HEIGHT = 50
-
-# 绘图刷新间隔
-REFRESH_INTERVAL =0.075
-
-#默认参考点高度
-DEFAULT_POINT_HEIGHT = 0.5
-
-# pygame window size
 PYGAME_SIZE = {
     "image_x": PIC_SIZE,
     "image_y": PIC_SIZE
 }
 
+# pygame-carla初始图像缩放参数
+CAMERA_SCALING_PARAM = 25/141
+
+CAMERA_INIT_HEIGHT = 50
+
+# 绘图刷新间隔
+REFRESH_INTERVAL =0.075
+
+DEFAULT_POINT_HEIGHT = 0.5
+
 # 在画线工具和Carla绘图子线程间共享数据
-params = {
+PARAMS = {
     'Line_points':None,
     'Camera_transform':None
 }
 
 # 视角高度变化量
-view_height_veriation = 0.0
+VIEW_HEIGHT_VERIATION = 0.0
 
-# 设置缩放范围
 MIN_VIEW_HEIGHT_VERIATION = -20
 MAX_VIEW_HEIGHT_VERIATION = 20
 
-# 相机传感器回调，将相机的原始数据重塑为 2D RGB，并应用于 PyGame 表面
 def pygame_callback(image):
+    """相机传感器回调，将相机的原始数据重塑为 2D RGB，并应用于 PyGame 表面"""
     img = np.reshape(np.copy(image.raw_data), (image.height, image.width, 4))
     img = img[:, :, :3]
     img = img[:, :, ::-1]
     global surface
     surface = pygame.surfarray.make_surface(img.swapaxes(0, 1))
 
-# 键盘输入控制视角移动时，对应控制绘图数据移动
 def move_line_points(line_points, axis, value):
+    """
+    键盘输入控制视角移动时，对应控制绘图数据移动
+
+    line_points --  需要移动的pygame参考点列表
+    axis        --  在pygame中移动的方向
+    value       --  在pygame中移动的像素数
+    """
     if axis == 'x':
         line_points = [carla.Location(point.x + value/CAMERA_SCALING_PARAM, point.y, point.z) for point in line_points]
     elif axis == 'y':
         line_points = [carla.Location(point.x, point.y + value/CAMERA_SCALING_PARAM, point.z) for point in line_points]
     return line_points
 
-# 计算基于自车坐标系的参考点位置(x,y)
+# 
 def convert_to_ego_car(line_points, ego_vehicle):
+    """
+    将参考点列表从Carla世界坐标系转换为主车坐标系
+
+    line_points --  需要移动的pygame参考点列表
+    ego_vehicle --  自车
+    points_of_ego_vehicle_coordinate_system --  基于自车坐标系的参考点位置列表(x,y)
+    """
     ego_car_matrix = ego_vehicle.get_transform().get_matrix()
     ego_car_matrix = np.mat(ego_car_matrix)
     car_matrix = ego_car_matrix.I
@@ -103,8 +111,15 @@ def calculate_yaws(points):
         yaws.append(yaw)
     return yaws 
 
-# 调用B样条函数实现曲线平滑
 def interpolate_b_spline_path(x, y, n_path_points, degree=3):
+    """
+    调用B样条函数实现曲线平滑
+
+    x   --  曲线x坐标列表
+    y   --  曲线y坐标列表
+    n_path_points   --  插值曲线采样点数量
+    degree          --  B样条曲线阶数
+    """
     ipl_t = np.linspace(0.0, len(x) - 1, len(x))
     l,r=[(2,0.0)],[(2,0.0)]
     spl_i_x = scipy_interpolate.make_interp_spline(ipl_t, x, k=degree,bc_type=(l,r))
@@ -123,7 +138,6 @@ def interpolate_path(path, sample_rate, times):
     way_point_y = [path[index].y for index in choices]
 
     for i in range(times):
-        #print("b-spline")
         way_point_x, way_point_y = interpolate_b_spline_path(way_point_x, way_point_y, len(path))
     new_path = np.vstack([way_point_x,way_point_y]).T
     return new_path
@@ -186,8 +200,6 @@ if __name__ == "__main__":
 
         # 获取 pygame 事件
         for event in pygame.event.get():
-
-            # If the window is closed, break the while loop
             if event.type == pygame.QUIT:
                 crashed = True
 
@@ -213,7 +225,7 @@ if __name__ == "__main__":
                     save_points(ego_car_points, "point_in_ego_car_system.txt", 2)
                     logging.info("data saved")
                 elif event.key == pygame.K_h:
-                    view_height_veriation = 0
+                    VIEW_HEIGHT_VERIATION = 0
                     camera_transform.location.z = CAMERA_INIT_HEIGHT
                 elif event.key == pygame.K_p:
                     line_points = []
@@ -229,7 +241,7 @@ if __name__ == "__main__":
                     final_interpolated_path = []
                     for point in interpolated_path:
                         z = draw_thread.get_z_coordinate(point, camera_transform)
-                        new_point = carla.Location(point[0], point[1], DEFAULT_POINT_HEIGHT)
+                        new_point = carla.Location(point[0], point[1], z)
                         final_interpolated_path.append(new_point)
 
                     line_points = final_interpolated_path
@@ -238,8 +250,8 @@ if __name__ == "__main__":
             elif event.type == pygame.MOUSEBUTTONUP:
                 drawing = False
             elif event.type == pygame.MOUSEMOTION and drawing:
-                new_pos = ((event.pos[0] - PIC_SIZE/2)*((CAMERA_INIT_HEIGHT + view_height_veriation)/CAMERA_INIT_HEIGHT) + PIC_SIZE/2 , 
-                           (event.pos[1] - PIC_SIZE/2)*((CAMERA_INIT_HEIGHT + view_height_veriation)/CAMERA_INIT_HEIGHT) + PIC_SIZE/2)
+                new_pos = ((event.pos[0] - PIC_SIZE/2)*((CAMERA_INIT_HEIGHT + VIEW_HEIGHT_VERIATION)/CAMERA_INIT_HEIGHT) + PIC_SIZE/2 , 
+                           (event.pos[1] - PIC_SIZE/2)*((CAMERA_INIT_HEIGHT + VIEW_HEIGHT_VERIATION)/CAMERA_INIT_HEIGHT) + PIC_SIZE/2)
                 z = draw_thread.get_z_coordinate(new_pos, camera_transform)
                 point_xyz = carla.Location(new_pos[0], new_pos[1], z)
                 line_points.append(point_xyz)
@@ -247,22 +259,20 @@ if __name__ == "__main__":
 
                 # 根据鼠标滚轮的方向调整缩放因子
                 if event.y == -1:  
-                    view_height_veriation += 0.5
+                    VIEW_HEIGHT_VERIATION += 0.5
                 else:  
-                    view_height_veriation -= 0.5
-                view_height_veriation = max(MIN_VIEW_HEIGHT_VERIATION, min(view_height_veriation, MAX_VIEW_HEIGHT_VERIATION))
-                camera_transform.location.z = CAMERA_INIT_HEIGHT + view_height_veriation
+                    VIEW_HEIGHT_VERIATION -= 0.5
+                VIEW_HEIGHT_VERIATION = max(MIN_VIEW_HEIGHT_VERIATION, min(VIEW_HEIGHT_VERIATION, MAX_VIEW_HEIGHT_VERIATION))
+                camera_transform.location.z = CAMERA_INIT_HEIGHT + VIEW_HEIGHT_VERIATION
 
             draw_thread.update_line_points(line_points)
             draw_thread.update_camera_transform(camera_transform)
             camera.set_transform(camera_transform)
 
-            
-
         pygame.display.flip()
 
     ego_vehicle.destroy()
-    camera.stop
+    camera.stop()
     draw_thread.stop()
 
     pygame.quit()

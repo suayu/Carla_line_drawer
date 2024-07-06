@@ -16,8 +16,8 @@ class DrawInCarlaThread:
         self.camera_init_height = camera_init_height
         self.default_point_height = default_point_height
 
-    # 绘图进程
     def draw_in_carla_thread(self):
+        """实现绘图进程"""
         while self.thread_hold:
             with self.lock:
                 camera_transform = self.camera_transform
@@ -38,7 +38,7 @@ class DrawInCarlaThread:
 
     def convert_PIL_points_to_carla(self, line_points, camera_transform):
 
-        # PIL coordinate system to Carla coordinate system
+        # 将pygame坐标系转化为Carla坐标系
         result_points = []
         for point in line_points:
             x_0 = point.x
@@ -47,14 +47,14 @@ class DrawInCarlaThread:
             y_1 = x_0 - self.pic_size/2
             A = np.array([x_1,y_1])
 
-            # Scale
+            # 计算缩放矩阵
             s_x = self.camera_scaling_param
             s_y = self.camera_scaling_param
 
             scale_matrix = np.array([[s_x, 0], 
                                     [0, s_y]])
 
-            # Translation
+            # 计算平移矩阵
             Location = camera_transform.location
             t_x = Location.x
             t_y = Location.y
@@ -62,8 +62,8 @@ class DrawInCarlaThread:
                                             [0, 1, t_y], 
                                             [0, 0, 1]])
 
-            # Rotation
-            angle = np.radians(camera_transform.rotation.yaw)  # 角度转换为弧度
+            # 计算旋转矩阵
+            angle = np.radians(camera_transform.rotation.yaw)
             rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)], 
                                         [np.sin(angle), np.cos(angle)]])
 
@@ -72,7 +72,7 @@ class DrawInCarlaThread:
 
             # 平移变换
             translated_A = np.dot(translation_matrix, np.append(scaled_A, 1))
-            translated_A = translated_A[:2]  # 去掉齐次坐标
+            translated_A = translated_A[:2] 
 
             # 旋转变换
             rotated_A = np.dot(rotation_matrix, translated_A)
@@ -109,21 +109,36 @@ class DrawInCarlaThread:
         with self.lock:
             self.camera_transform = camera_transform
 
-    def is_label_valid(self,label):
+    def is_label_valid(self, label):
+        """
+        判断语义标签是否合法
 
-        # full label-value data : https://carla.readthedocs.io/en/latest/ref_sensors/#semantic-segmentation-camera
+        label   --  Carla语义标签
+        invalid_labels  --  非法语义列表
+
+        完整语义标签对照表可参考网址 : https://carla.readthedocs.io/en/latest/ref_sensors/#semantic-segmentation-camera
+        其中，
+        6 : Poles
+        7 : TrafficLight
+        8 : TrafficSign
+        如果label为invalid_labels中的任何一种,则说明标签不合法
+        """
+        
         invalid_labels = {
-            6, # Poles
-            7, # TrafficLight
-            8, # TrafficSign
+            6,
+            7,
+            8,
         }
         return label not in invalid_labels
 
     def get_z_coordinate(self, point, camera_transform):
+        """
+        计算pygame坐标系下的点在Carla中的对应点高度
 
-        # Compute the z coordinate of a single point in the pygame window corresponding to a point in carla
-        # point: (x,y)
-        # camera_transform: carla.Transform
+        point               --  pygame坐标系下的点(x,y)
+        camera_transform    --  相机transform矩阵
+        z                   --  Carla中对应点高度
+        """
 
         points = []
         points.append(carla.Location(x=point[0], y=point[1], z=self.default_point_height))
