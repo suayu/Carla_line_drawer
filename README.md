@@ -1,10 +1,17 @@
-# Carla Camera Tool
+# Carla Line Drawing Tool
 
 ## Introduction
 
 This plugin allows you to control an overhead camera in the Carla simulator, draw lines in the Carla simulator, and save reference points.
 
 ## Installation
+
+### Import Conda Environment
+
+To install the required environment, run:
+```
+pip3 install -r requirements.txt
+```
 
 ### Copy the Script
 
@@ -17,6 +24,8 @@ To start the Carla simulator, run:
 ./CarlaUE4.sh
 ```
 
+## Usage
+
 ### Start the Tool
 
 To start the line tool, run:
@@ -24,14 +33,6 @@ To start the line tool, run:
 python cameras.py
 ```
 
-### Import Conda Environment
-
-To create the required conda environment, run:
-```
-conda env create -f freeze.yml
-```
-
-## Usage
 After starting the tool, it will load a map in the Carla simulator (default is Town01).   A new window will open and display a camera view.  The default camera height is `z=50`, and the default window size is `800×800`.
 
 ### Camera Controls
@@ -50,7 +51,3 @@ In the new window, you can draw lines with the mouse.  The tool will draw red li
 - Press `H` to reset the camera height to the default value.
 - Press `Y` to calculate yaw of ego car at the reference point
 - Press `B` to smooth the curve
-
-## Note
-
-Ensure you have the Carla simulator running and properly set up before using this tool.
