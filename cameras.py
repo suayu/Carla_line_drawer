@@ -1,8 +1,10 @@
 import random
 import math
+import sys
 import logging
 import pygame
 import carla
+import argparse
 import numpy as np
 import scipy.interpolate as scipy_interpolate
 from draw_line_thread import DrawInCarlaThread
@@ -58,7 +60,7 @@ def move_line_points(line_points, axis, value):
         line_points = [carla.Location(point.x, point.y + value/CAMERA_SCALING_PARAM, point.z) for point in line_points]
     return line_points
 
-# 
+
 def convert_to_ego_car(line_points, ego_vehicle):
     """
     将参考点列表从Carla世界坐标系转换为主车坐标系
@@ -143,19 +145,35 @@ def interpolate_path(path, sample_rate, times):
     return new_path
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.NOTSET)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--actor_id', type=int, default=-1, help='ID of actor')
+    args = parser.parse_args()
+    actor_id = args.actor_id
+    print("actor id:",actor_id)
 
     # 连接到客户端并检索世界对象
     client = carla.Client('localhost', 2000)
     client.load_world('Town04')
     world = client.get_world()
 
-    # 获取地图的刷出点
-    spawn_point = random.choice(world.get_map().get_spawn_points())
+    # 获取车辆并设置自动驾驶
+    if actor_id == -1:
 
-    # 生成车辆并设置自动驾驶
-    vehicle_bp = world.get_blueprint_library().filter('*vehicle*').filter('vehicle.tesla.*')[0]
-    ego_vehicle = world.spawn_actor(vehicle_bp, spawn_point)
-    #ego_vehicle.set_autopilot(True)
+        # 获取地图的刷出点
+        spawn_point = random.choice(world.get_map().get_spawn_points())
+        vehicle_bp = world.get_blueprint_library().filter('*vehicle*').filter('vehicle.tesla.*')[0]
+        ego_vehicle = world.spawn_actor(vehicle_bp, spawn_point)
+        # ego_vehicle.set_autopilot(True)
+    else:
+        actor_list = world.get_actors()
+        actor = actor_list.find(actor_id)
+        if actor == None:
+            logging.warning("ERROR ACTOR ID!")
+            sys.exit()
+        else:
+            ego_vehicle = actor_list.find(actor_id)
 
     world.get_spectator().set_transform(carla.Transform(ego_vehicle.get_transform().location+carla.Location(z=CAMERA_INIT_HEIGHT),carla.Rotation(pitch=-90)))
 
