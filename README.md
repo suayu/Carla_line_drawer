@@ -33,6 +33,13 @@ To start the line tool, run:
 python cameras.py
 ```
 
+If you start the tool by above way, the tool will generate a car and set it the ego vehicle. The vehicle coordinate system is calculated according to the ego vehicle.
+
+Or you can launch the tool by another way. You can enter the actor_id, just `ID`, to specify the initial position of the camera when the tool starts. The tool calculates the vehicle coordinate system based on the actor you specify. If you enter an `ID` that doesn't exist, the tool will exit.
+```
+python cameras.py --actor_id ID
+```
+
 After starting the tool, it will load a map in the Carla simulator (default is Town01).   A new window will open and display a camera view.  The default camera height is `z=50`, and the default window size is `800×800`.
 
 ### Camera Controls
